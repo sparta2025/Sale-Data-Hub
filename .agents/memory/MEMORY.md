@@ -1,0 +1,2 @@
+- [Codegen naming](codegen-naming.md) — Orval hook/schema names differ from OpenAPI component names; always grep api.ts to confirm.
+- [Express5 params cast](express5-params.md) — req.params values need `as string` cast before passing to Drizzle eq().

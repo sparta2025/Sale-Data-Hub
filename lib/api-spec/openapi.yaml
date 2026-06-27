@@ -2,21 +2,48 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: Sales BI Platform — unified API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication & sessions
+  - name: users
+    description: User management
+  - name: datasets
+    description: Dataset upload & management
+  - name: kpi
+    description: KPI calculations & analysis
+  - name: scenario
+    description: Scenario analysis
+  - name: forecast
+    description: Forecasting
+  - name: portfolio
+    description: Portfolio analysis (BCG, EVA, Payback)
+  - name: dashboards
+    description: Saved dashboards
+  - name: map
+    description: Geographic drill-down data
+  - name: export
+    description: Export to Excel/CSV/PDF/JSON
+  - name: agents
+    description: AI agents (analysis, price search)
+  - name: notifications
+    description: User notifications
+  - name: audit
+    description: Audit log
+
 paths:
+  # ─── Health ─────────────────────────────────────────────────────
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +51,2077 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Auth ────────────────────────────────────────────────────────
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout (revoke token)
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMe
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /auth/change-password:
+    post:
+      operationId: changePassword
+      tags: [auth]
+      summary: Change password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/forgot-password:
+    post:
+      operationId: forgotPassword
+      tags: [auth]
+      summary: Request password reset email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForgotPasswordInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/reset-password:
+    post:
+      operationId: resetPassword
+      tags: [auth]
+      summary: Reset password via token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Users (admin) ───────────────────────────────────────────────
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserListResponse"
+
+  /users/{userId}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID (admin)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user (admin)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Soft-delete user (admin)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Datasets ────────────────────────────────────────────────────
+  /datasets:
+    get:
+      operationId: listDatasets
+      tags: [datasets]
+      summary: List datasets for current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dataset"
+    post:
+      operationId: createDataset
+      tags: [datasets]
+      summary: Create dataset record (after upload)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DatasetInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+
+  /datasets/{datasetId}:
+    get:
+      operationId: getDataset
+      tags: [datasets]
+      summary: Get dataset by ID
+      parameters:
+        - name: datasetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+    delete:
+      operationId: deleteDataset
+      tags: [datasets]
+      summary: Delete dataset
+      parameters:
+        - name: datasetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /datasets/{datasetId}/summary:
+    get:
+      operationId: getDatasetSummary
+      tags: [datasets]
+      summary: Get dataset summary stats
+      parameters:
+        - name: datasetId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DatasetSummary"
+
+  /datasets/upload:
+    post:
+      operationId: uploadDataset
+      tags: [datasets]
+      summary: Upload Excel/CSV file and parse into DB
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/DatasetFileUpload"
+      responses:
+        "201":
+          description: Uploaded and parsed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dataset"
+
+  # ─── KPI ─────────────────────────────────────────────────────────
+  /kpi/summary:
+    post:
+      operationId: getKpiSummary
+      tags: [kpi]
+      summary: Aggregated KPI metrics
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiSummaryRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiSummaryResponse"
+
+  /kpi/scorecard:
+    post:
+      operationId: getKpiScorecard
+      tags: [kpi]
+      summary: KPI scorecard comparing two periods
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiScorecardRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiScorecardResponse"
+
+  /kpi/compare:
+    post:
+      operationId: getKpiCompare
+      tags: [kpi]
+      summary: Compare KPI across dimension values for two periods
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiCompareRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiCompareResponse"
+
+  /kpi/pl:
+    post:
+      operationId: getProfitLoss
+      tags: [kpi]
+      summary: P&L statement for given filters
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlResponse"
+
+  /kpi/targets:
+    get:
+      operationId: getKpiTargets
+      tags: [kpi]
+      summary: Get KPI targets for current user
+      parameters:
+        - name: datasetId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/KpiTarget"
+    post:
+      operationId: upsertKpiTarget
+      tags: [kpi]
+      summary: Create or update a KPI target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KpiTargetInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/KpiTarget"
+
+  # ─── Scenario ────────────────────────────────────────────────────
+  /scenario/run:
+    post:
+      operationId: runScenario
+      tags: [scenario]
+      summary: Run a single scenario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScenarioRunInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioRunResponse"
+
+  /scenario/compare:
+    post:
+      operationId: compareScenarios
+      tags: [scenario]
+      summary: Compare multiple scenarios
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScenarioCompareInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioCompareResponse"
+
+  /scenario/sensitivity:
+    post:
+      operationId: runSensitivity
+      tags: [scenario]
+      summary: Sensitivity analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SensitivityInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SensitivityResponse"
+
+  # ─── Forecast ────────────────────────────────────────────────────
+  /forecast:
+    post:
+      operationId: getForecast
+      tags: [forecast]
+      summary: Revenue forecast
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ForecastInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ForecastResponse"
+
+  # ─── Portfolio ───────────────────────────────────────────────────
+  /portfolio/bcg:
+    post:
+      operationId: getBcg
+      tags: [portfolio]
+      summary: BCG matrix analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BcgInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BcgResponse"
+
+  /portfolio/eva:
+    post:
+      operationId: getEva
+      tags: [portfolio]
+      summary: EVA (Economic Value Added) analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EvaInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaResponse"
+
+  /portfolio/payback:
+    post:
+      operationId: getPayback
+      tags: [portfolio]
+      summary: Payback period analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaybackInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaybackResponse"
+
+  # ─── Dashboards ──────────────────────────────────────────────────
+  /dashboards:
+    get:
+      operationId: listDashboards
+      tags: [dashboards]
+      summary: List saved dashboards for current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Dashboard"
+    post:
+      operationId: createDashboard
+      tags: [dashboards]
+      summary: Save a new dashboard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+
+  /dashboards/{dashboardId}:
+    get:
+      operationId: getDashboard
+      tags: [dashboards]
+      summary: Get dashboard by ID
+      parameters:
+        - name: dashboardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+    patch:
+      operationId: updateDashboard
+      tags: [dashboards]
+      summary: Update dashboard
+      parameters:
+        - name: dashboardId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DashboardUpdate"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Dashboard"
+    delete:
+      operationId: deleteDashboard
+      tags: [dashboards]
+      summary: Delete dashboard
+      parameters:
+        - name: dashboardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Map ─────────────────────────────────────────────────────────
+  /map/drilldown:
+    post:
+      operationId: getMapDrilldown
+      tags: [map]
+      summary: Get geo drill-down data (country > branch > category > SKU)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MapDrilldownInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MapDrilldownResponse"
+
+  # ─── Export ──────────────────────────────────────────────────────
+  /export/excel:
+    post:
+      operationId: exportExcel
+      tags: [export]
+      summary: Export KPI data as Excel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportInput"
+      responses:
+        "200":
+          description: Excel file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /export/csv:
+    post:
+      operationId: exportCsv
+      tags: [export]
+      summary: Export KPI data as CSV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportInput"
+      responses:
+        "200":
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+
+  /export/json:
+    post:
+      operationId: exportJson
+      tags: [export]
+      summary: Export KPI data as JSON
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportInput"
+      responses:
+        "200":
+          description: JSON file
+          content:
+            application/json:
+              schema:
+                type: object
+
+  # ─── Agents ──────────────────────────────────────────────────────
+  /agents/analyze:
+    post:
+      operationId: agentAnalyze
+      tags: [agents]
+      summary: AI agent — analyze dataset and generate insights
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentAnalyzeInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentAnalyzeResult"
+
+  /agents/price-search:
+    post:
+      operationId: agentPriceSearch
+      tags: [agents]
+      summary: AI agent — search competitor prices for SKUs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentPriceSearchInput"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPriceSearchResult"
+
+  /agents/tasks:
+    get:
+      operationId: listAgentTasks
+      tags: [agents]
+      summary: List agent tasks for current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AgentTask"
+
+  /agents/tasks/{taskId}:
+    get:
+      operationId: getAgentTask
+      tags: [agents]
+      summary: Get agent task status and result
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentTask"
+
+  # ─── Notifications ───────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: List notifications for current user
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{notificationId}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark notification as read
+      parameters:
+        - name: notificationId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  # ─── Audit ───────────────────────────────────────────────────────
+  /audit:
+    get:
+      operationId: listAuditLog
+      tags: [audit]
+      summary: List audit log entries (admin)
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: userId
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogListResponse"
+
 components:
   schemas:
+    # ─── Shared ────────────────────────────────────────────────────
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
+        postgres:
+          type: string
+        version:
+          type: string
 
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    # ─── Auth ──────────────────────────────────────────────────────
+    RegisterInput:
+      type: object
+      required: [email, password, firstName, lastName]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: ["string", "null"]
+        language:
+          type: string
+          default: ru
+        theme:
+          type: string
+          default: light
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/UserProfile"
+
+    UserProfile:
+      type: object
+      required: [id, email, firstName, lastName, isActive, role, createdAt]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: ["string", "null"]
+        recoveryEmail:
+          type: ["string", "null"]
+        isActive:
+          type: boolean
+        role:
+          type: string
+        language:
+          type: string
+        theme:
+          type: string
+        lastLoginAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: ["string", "null"]
+        recoveryEmail:
+          type: ["string", "null"]
+        language:
+          type: string
+        theme:
+          type: string
+
+    ChangePasswordInput:
+      type: object
+      required: [currentPassword, newPassword]
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    ForgotPasswordInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+
+    ResetPasswordInput:
+      type: object
+      required: [token, newPassword]
+      properties:
+        token:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+
+    # ─── Users ─────────────────────────────────────────────────────
+    UserListResponse:
+      type: object
+      required: [users, total, page, limit]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/UserProfile"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    AdminUserUpdate:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        isActive:
+          type: boolean
+        role:
+          type: string
+
+    # ─── Datasets ──────────────────────────────────────────────────
+    Dataset:
+      type: object
+      required: [id, name, userId, rowCount, columns, createdAt]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        userId:
+          type: string
+        fileName:
+          type: string
+        rowCount:
+          type: integer
+        columns:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        isDemo:
+          type: boolean
+        createdAt:
+          type: string
+
+    DatasetInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        fileName:
+          type: string
+        rowCount:
+          type: integer
+        columns:
+          type: array
+          items:
+            type: string
+
+    DatasetSummary:
+      type: object
+      required: [datasetId, totalRevenue, totalGrossProfit, totalEbitda, totalRoi, countRows, countries, years]
+      properties:
+        datasetId:
+          type: string
+        totalRevenue:
+          type: number
+        totalGrossProfit:
+          type: number
+        totalEbitda:
+          type: number
+        totalRoi:
+          type: number
+        countRows:
+          type: integer
+        countries:
+          type: array
+          items:
+            type: string
+        years:
+          type: array
+          items:
+            type: integer
+        categories:
+          type: array
+          items:
+            type: string
+
+    # ─── KPI ───────────────────────────────────────────────────────
+    KpiFilters:
+      type: object
+      properties:
+        country:
+          type: ["string", "null"]
+        branch:
+          type: ["string", "null"]
+        year:
+          type: ["integer", "null"]
+        month:
+          type: ["integer", "null"]
+        category:
+          type: ["string", "null"]
+        sku:
+          type: ["string", "null"]
+
+    KpiSummaryRequest:
+      type: object
+      required: [datasetId, groupBy]
+      properties:
+        datasetId:
+          type: string
+        groupBy:
+          type: array
+          items:
+            type: string
+          minItems: 1
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    KpiRow:
+      type: object
+      required: [dimensions, metrics]
+      properties:
+        dimensions:
+          type: object
+        metrics:
+          type: object
+
+    KpiSummaryResponse:
+      type: object
+      required: [groupBy, rows, total, rowCount]
+      properties:
+        groupBy:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/KpiRow"
+        total:
+          type: object
+        rowCount:
+          type: integer
+        cached:
+          type: boolean
+
+    KpiScorecardRequest:
+      type: object
+      required: [datasetId, periodCol, periodA, periodB]
+      properties:
+        datasetId:
+          type: string
+        periodCol:
+          type: string
+        periodA:
+          type: string
+        periodB:
+          type: string
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    KpiScorecardMetric:
+      type: object
+      required: [columnName, displayName, displayFormat, valueA, valueB, deltaPct]
+      properties:
+        columnName:
+          type: string
+        displayName:
+          type: string
+        displayFormat:
+          type: string
+        valueA:
+          type: number
+        valueB:
+          type: number
+        deltaPct:
+          type: number
+
+    KpiScorecardResponse:
+      type: object
+      required: [periodA, periodB, metrics]
+      properties:
+        periodA:
+          type: string
+        periodB:
+          type: string
+        metrics:
+          type: array
+          items:
+            $ref: "#/components/schemas/KpiScorecardMetric"
+
+    KpiCompareRequest:
+      type: object
+      required: [datasetId, dimension, metric, periodCol, periodA, periodB]
+      properties:
+        datasetId:
+          type: string
+        dimension:
+          type: string
+        metric:
+          type: string
+        periodCol:
+          type: string
+        periodA:
+          type: string
+        periodB:
+          type: string
+        limit:
+          type: integer
+          default: 15
+
+    KpiCompareItem:
+      type: object
+      required: [label, valueA, valueB]
+      properties:
+        label:
+          type: string
+        valueA:
+          type: number
+        valueB:
+          type: number
+        delta:
+          type: number
+        deltaPct:
+          type: number
+
+    KpiCompareResponse:
+      type: object
+      required: [dimension, metric, metricDisplay, periodA, periodB, items]
+      properties:
+        dimension:
+          type: string
+        metric:
+          type: string
+        metricDisplay:
+          type: string
+        periodA:
+          type: string
+        periodB:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/KpiCompareItem"
+
+    PlRequest:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: string
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+        groupBy:
+          type: array
+          items:
+            type: string
+
+    PlLineItem:
+      type: object
+      required: [label, value, level]
+      properties:
+        label:
+          type: string
+        value:
+          type: number
+        pct:
+          type: ["number", "null"]
+        level:
+          type: integer
+        isTotal:
+          type: boolean
+
+    PlResponse:
+      type: object
+      required: [lines, currency]
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlLineItem"
+        currency:
+          type: string
+        groupBy:
+          type: array
+          items:
+            type: string
+        filters:
+          type: object
+
+    KpiTarget:
+      type: object
+      required: [id, datasetId, userId, metric, targetValue, period]
+      properties:
+        id:
+          type: string
+        datasetId:
+          type: string
+        userId:
+          type: string
+        metric:
+          type: string
+        targetValue:
+          type: number
+        period:
+          type: string
+        createdAt:
+          type: string
+
+    KpiTargetInput:
+      type: object
+      required: [datasetId, metric, targetValue, period]
+      properties:
+        datasetId:
+          type: string
+        metric:
+          type: string
+        targetValue:
+          type: number
+        period:
+          type: string
+
+    # ─── Scenario ──────────────────────────────────────────────────
+    ScenarioParams:
+      type: object
+      properties:
+        name:
+          type: string
+          default: "Сценарий"
+        priceChange:
+          type: number
+          default: 0
+        volumeChange:
+          type: number
+          default: 0
+        cogsChange:
+          type: number
+          default: 0
+        marketingChange:
+          type: number
+          default: 0
+        overheadChange:
+          type: number
+          default: 0
+        dsoChangeDays:
+          type: number
+          default: 0
+        newSkuRev:
+          type: number
+          default: 0
+        waccDelta:
+          type: number
+          default: 0
+
+    ScenarioRunInput:
+      type: object
+      required: [datasetId, scenario]
+      properties:
+        datasetId:
+          type: string
+        scenario:
+          $ref: "#/components/schemas/ScenarioParams"
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+        groupBy:
+          type: array
+          items:
+            type: string
+
+    ScenarioDelta:
+      type: object
+      required: [kpi, baseValue, scenarioValue, deltaAbs, deltaPct]
+      properties:
+        kpi:
+          type: string
+        baseValue:
+          type: number
+        scenarioValue:
+          type: number
+        deltaAbs:
+          type: number
+        deltaPct:
+          type: number
+
+    ScenarioRunResponse:
+      type: object
+      required: [scenarioName, base, result, deltas]
+      properties:
+        scenarioName:
+          type: string
+        base:
+          type: object
+        result:
+          type: object
+        deltas:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioDelta"
+
+    ScenarioCompareInput:
+      type: object
+      required: [datasetId, scenarios]
+      properties:
+        datasetId:
+          type: string
+        scenarios:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScenarioParams"
+          minItems: 2
+        kpis:
+          type: array
+          items:
+            type: string
+        groupBy:
+          type: array
+          items:
+            type: string
+
+    ScenarioCompareResponse:
+      type: object
+      required: [scenarios, kpis, comparison, bestScenario, worstScenario]
+      properties:
+        scenarios:
+          type: array
+          items:
+            type: string
+        kpis:
+          type: array
+          items:
+            type: string
+        comparison:
+          type: array
+          items:
+            type: object
+        bestScenario:
+          type: string
+        worstScenario:
+          type: string
+
+    SensitivityInput:
+      type: object
+      required: [datasetId, baseScenario, paramName, values, targetKpi]
+      properties:
+        datasetId:
+          type: string
+        baseScenario:
+          $ref: "#/components/schemas/ScenarioParams"
+        paramName:
+          type: string
+        values:
+          type: array
+          items:
+            type: number
+        targetKpi:
+          type: string
+        groupBy:
+          type: array
+          items:
+            type: string
+
+    SensitivityRow:
+      type: object
+      required: [paramValue, kpiValue]
+      properties:
+        paramValue:
+          type: number
+        kpiValue:
+          type: number
+        delta:
+          type: ["number", "null"]
+        deltaPct:
+          type: ["number", "null"]
+
+    SensitivityResponse:
+      type: object
+      required: [paramName, targetKpi, rows, elasticity]
+      properties:
+        paramName:
+          type: string
+        targetKpi:
+          type: string
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/SensitivityRow"
+        elasticity:
+          type: number
+
+    # ─── Forecast ──────────────────────────────────────────────────
+    ForecastInput:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: string
+        horizon:
+          type: integer
+          default: 12
+        method:
+          type: string
+          default: trend_seasonal
+        groupCol:
+          type: ["string", "null"]
+        macroAdj:
+          type: number
+          default: 1.0
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    ForecastPoint:
+      type: object
+      required: [date, year, month, value]
+      properties:
+        date:
+          type: string
+        year:
+          type: integer
+        month:
+          type: integer
+        value:
+          type: number
+        group:
+          type: ["string", "null"]
+        isHistory:
+          type: boolean
+        lowerCi:
+          type: ["number", "null"]
+        upperCi:
+          type: ["number", "null"]
+
+    ForecastResponse:
+      type: object
+      required: [method, horizon, history, forecast, seasonality]
+      properties:
+        method:
+          type: string
+        horizon:
+          type: integer
+        groupCol:
+          type: ["string", "null"]
+        macroAdj:
+          type: number
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+        forecast:
+          type: array
+          items:
+            $ref: "#/components/schemas/ForecastPoint"
+        seasonality:
+          type: array
+          items:
+            type: object
+        trendYoyPct:
+          type: ["number", "null"]
+
+    # ─── Portfolio ─────────────────────────────────────────────────
+    BcgInput:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: string
+        currentYear:
+          type: ["integer", "null"]
+        prevYear:
+          type: ["integer", "null"]
+        category:
+          type: ["string", "null"]
+
+    BcgItem:
+      type: object
+      required: [sku, category, revCurrent, marketShare, bcgQuadrant]
+      properties:
+        sku:
+          type: string
+        category:
+          type: string
+        revCurrent:
+          type: number
+        revPrev:
+          type: ["number", "null"]
+        growthYoy:
+          type: ["number", "null"]
+        marketShare:
+          type: number
+        bcgQuadrant:
+          type: string
+
+    BcgResponse:
+      type: object
+      required: [currentYear, prevYear, items, quadrantCounts, quadrantRev]
+      properties:
+        currentYear:
+          type: integer
+        prevYear:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BcgItem"
+        quadrantCounts:
+          type: object
+        quadrantRev:
+          type: object
+
+    EvaInput:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: string
+        groupBy:
+          type: array
+          items:
+            type: string
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    EvaRow:
+      type: object
+      required: [dimensions, ebit, ic, nopat, wacc, waccIc, eva, evaPositive]
+      properties:
+        dimensions:
+          type: object
+        ebit:
+          type: number
+        ic:
+          type: number
+        nopat:
+          type: number
+        wacc:
+          type: number
+        waccIc:
+          type: number
+        eva:
+          type: number
+        evaPositive:
+          type: boolean
+
+    EvaResponse:
+      type: object
+      required: [groupBy, rows, totalEva, totalNopat, valueCreators, valueDestroyers]
+      properties:
+        groupBy:
+          type: array
+          items:
+            type: string
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaRow"
+        totalEva:
+          type: number
+        totalNopat:
+          type: number
+        valueCreators:
+          type: integer
+        valueDestroyers:
+          type: integer
+
+    PaybackInput:
+      type: object
+      required: [datasetId]
+      properties:
+        datasetId:
+          type: string
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    PaybackRow:
+      type: object
+      required: [sku, gpAnnual, ic]
+      properties:
+        sku:
+          type: string
+        gpAnnual:
+          type: number
+        ic:
+          type: number
+        paybackYears:
+          type: ["number", "null"]
+        bcgQuadrant:
+          type: ["string", "null"]
+
+    PaybackResponse:
+      type: object
+      required: [rows, avgPayback, under3Years, over5Years]
+      properties:
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/PaybackRow"
+        avgPayback:
+          type: number
+        under3Years:
+          type: integer
+        over5Years:
+          type: integer
+
+    # ─── Dashboards ────────────────────────────────────────────────
+    Dashboard:
+      type: object
+      required: [id, userId, name, config, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        config:
+          type: object
+        isPublic:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    DashboardInput:
+      type: object
+      required: [name, config]
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        config:
+          type: object
+        isPublic:
+          type: boolean
+
+    DashboardUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        config:
+          type: object
+        isPublic:
+          type: boolean
+
+    # ─── Map ───────────────────────────────────────────────────────
+    MapDrilldownInput:
+      type: object
+      required: [datasetId, level]
+      properties:
+        datasetId:
+          type: string
+        level:
+          type: string
+          description: "country | branch | category | sku"
+        parentCountry:
+          type: ["string", "null"]
+        parentBranch:
+          type: ["string", "null"]
+        parentCategory:
+          type: ["string", "null"]
+        metric:
+          type: string
+          default: "revenue"
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+
+    MapDrilldownItem:
+      type: object
+      required: [id, label, level, value]
+      properties:
+        id:
+          type: string
+        label:
+          type: string
+        level:
+          type: string
+        value:
+          type: number
+        growthPct:
+          type: ["number", "null"]
+        children:
+          type: integer
+        lat:
+          type: ["number", "null"]
+        lng:
+          type: ["number", "null"]
+
+    MapDrilldownResponse:
+      type: object
+      required: [level, metric, items]
+      properties:
+        level:
+          type: string
+        metric:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MapDrilldownItem"
+
+    # ─── Export ────────────────────────────────────────────────────
+    ExportInput:
+      type: object
+      required: [datasetId, type]
+      properties:
+        datasetId:
+          type: string
+        type:
+          type: string
+          description: "kpi | pl | bcg | forecast | raw"
+        filters:
+          $ref: "#/components/schemas/KpiFilters"
+        groupBy:
+          type: array
+          items:
+            type: string
+
+    # ─── Agents ────────────────────────────────────────────────────
+    AgentAnalyzeInput:
+      type: object
+      required: [datasetId, prompt]
+      properties:
+        datasetId:
+          type: string
+        prompt:
+          type: string
+        model:
+          type: string
+          default: "claude-3-5-haiku"
+        language:
+          type: string
+          default: "ru"
+
+    AgentAnalyzeResult:
+      type: object
+      required: [taskId, status]
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+        result:
+          type: ["string", "null"]
+        insights:
+          type: array
+          items:
+            type: string
+
+    AgentPriceSearchInput:
+      type: object
+      required: [datasetId, skus]
+      properties:
+        datasetId:
+          type: string
+        skus:
+          type: array
+          items:
+            type: string
+        country:
+          type: ["string", "null"]
+        maxResults:
+          type: integer
+          default: 5
+
+    AgentPriceSearchItem:
+      type: object
+      required: [sku, ourPrice, competitorOffers]
+      properties:
+        sku:
+          type: string
+        ourPrice:
+          type: number
+        competitorOffers:
+          type: array
+          items:
+            type: object
+        pricePositioning:
+          type: string
+        recommendation:
+          type: string
+
+    AgentPriceSearchResult:
+      type: object
+      required: [taskId, status, items]
+      properties:
+        taskId:
+          type: string
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPriceSearchItem"
+
+    DatasetFileUpload:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+        name:
+          type: string
+        sheet:
+          type: string
+
+    AgentTask:
+      type: object
+      required: [id, userId, type, status, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        prompt:
+          type: ["string", "null"]
+        result:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        completedAt:
+          type: ["string", "null"]
+
+    # ─── Notifications ─────────────────────────────────────────────
+    Notification:
+      type: object
+      required: [id, event, title, isRead, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: ["string", "null"]
+        event:
+          type: string
+        title:
+          type: string
+        body:
+          type: ["string", "null"]
+        link:
+          type: ["string", "null"]
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+
+    # ─── Audit ─────────────────────────────────────────────────────
+    AuditLogEntry:
+      type: object
+      required: [id, action, createdAt]
+      properties:
+        id:
+          type: string
+        userId:
+          type: ["string", "null"]
+        action:
+          type: string
+        entityType:
+          type: ["string", "null"]
+        entityId:
+          type: ["string", "null"]
+        detail:
+          type: ["string", "null"]
+        ipAddress:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    AuditLogListResponse:
+      type: object
+      required: [entries, total, page, limit]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogEntry"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
