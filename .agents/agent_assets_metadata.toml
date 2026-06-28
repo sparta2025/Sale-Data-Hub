@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "F9wDLF7nskMTd1F0Nemex"
+uri = "file://sales-bi-platform.tar.gz"
+type = "unspecified"
+title = "Sales BI Platform — полный архив проекта"
