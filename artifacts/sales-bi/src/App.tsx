@@ -18,6 +18,9 @@ const queryClient = new QueryClient({
 // Lazy-loaded pages
 const Login = lazy(() => import("@/pages/auth/login"));
 const Dashboard = lazy(() => import("@/pages/dashboard/index"));
+const KpiPage = lazy(() => import("@/pages/dashboard/kpi"));
+const ForecastPage = lazy(() => import("@/pages/dashboard/forecast"));
+const ScenarioPage = lazy(() => import("@/pages/dashboard/scenario"));
 const DatasetsPage = lazy(() => import("@/pages/datasets/index"));
 const AgentsPage = lazy(() => import("@/pages/agents/index"));
 const AdminPage = lazy(() => import("@/pages/admin/index"));
@@ -50,6 +53,9 @@ function Router() {
         <Route path="/">
           {isAuthenticated || isDemo ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
         </Route>
+        <ProtectedRoute path="/dashboard/kpi" component={KpiPage} />
+        <ProtectedRoute path="/dashboard/forecast" component={ForecastPage} />
+        <ProtectedRoute path="/dashboard/scenario" component={ScenarioPage} />
         <ProtectedRoute path="/dashboard" component={Dashboard} />
         <ProtectedRoute path="/datasets" component={DatasetsPage} />
         <ProtectedRoute path="/agents" component={AgentsPage} />

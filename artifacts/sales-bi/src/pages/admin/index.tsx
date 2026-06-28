@@ -22,7 +22,7 @@ const statsCards = [
 
 export default function AdminPage() {
   const { isDemo } = useAuth();
-  const { data: usersData } = useListUsers({}, { query: { enabled: !isDemo } });
+  const { data: usersData } = useListUsers({}, { query: { enabled: !isDemo, queryKey: ["listUsers"] } as any });
   const displayUsers = isDemo ? demoUsers : (usersData?.users ?? []);
 
   return (

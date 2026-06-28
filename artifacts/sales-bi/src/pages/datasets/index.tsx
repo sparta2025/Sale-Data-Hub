@@ -17,7 +17,7 @@ export default function DatasetsPage() {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const { data: datasetsData, refetch } = useListDatasets({}, { query: { enabled: !isDemo } });
+  const { data: datasetsData, refetch } = useListDatasets({ query: { enabled: !isDemo, queryKey: ["listDatasets"] } as any });
 
   const demoDatasets = [
     {
@@ -34,7 +34,7 @@ export default function DatasetsPage() {
     },
   ];
 
-  const items = isDemo ? demoDatasets : (datasetsData?.datasets ?? []);
+  const items = isDemo ? demoDatasets : (datasetsData ?? []);
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
