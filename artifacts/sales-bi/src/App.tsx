@@ -21,6 +21,7 @@ const Dashboard = lazy(() => import("@/pages/dashboard/index"));
 const KpiPage = lazy(() => import("@/pages/dashboard/kpi"));
 const ForecastPage = lazy(() => import("@/pages/dashboard/forecast"));
 const ScenarioPage = lazy(() => import("@/pages/dashboard/scenario"));
+const ComparePage = lazy(() => import("@/pages/dashboard/compare"));
 const PortfolioPage = lazy(() => import("@/pages/dashboard/portfolio"));
 const SalesMapPage = lazy(() => import("@/pages/dashboard/map"));
 const DatasetsPage = lazy(() => import("@/pages/datasets/index"));
@@ -56,6 +57,7 @@ function Router() {
           {isAuthenticated || isDemo ? <Redirect to="/dashboard" /> : <Redirect to="/login" />}
         </Route>
         <ProtectedRoute path="/dashboard/kpi" component={KpiPage} />
+        <ProtectedRoute path="/dashboard/compare" component={ComparePage} />
         <ProtectedRoute path="/dashboard/forecast" component={ForecastPage} />
         <ProtectedRoute path="/dashboard/scenario" component={ScenarioPage} />
         <ProtectedRoute path="/dashboard/portfolio" component={PortfolioPage} />

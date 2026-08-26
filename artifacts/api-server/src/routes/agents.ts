@@ -3,7 +3,7 @@
 // Multi-agent system: Excel analysis + competitor price search
 import { Router } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { db, agentTasksTable, salesTransactionsTable, datasetsTable } from "@workspace/db";
+import { db, agentTasksTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { AgentAnalyzeBody, AgentPriceSearchBody } from "@workspace/api-zod";
@@ -30,24 +30,35 @@ router.get("/tasks/:taskId", requireAuth, async (req, res) => {
 });
 
 // POST /api/agents/analyze
-router.post("/analyze", requireAuth, async (req, res) => {
-  const user = (req as any).user;
+router.post("/analyze", optionalAuth, async (req, res) => {
+  const user = (req as any).user as { id: string } | undefined;
   const parsed = AgentAnalyzeBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: "Invalid input" }); return; }
   const { datasetId, prompt, language } = parsed.data;
 
   const taskId = uuidv4();
-  await db.insert(agentTasksTable).values({
-    id: taskId, userId: user.id, type: "analyze",
-    status: "running", prompt, datasetId: datasetId ?? null,
-  });
+  const result = await runAnalysis(datasetId, prompt, language ?? "ru");
 
-  // Run analysis asynchronously (fire-and-forget pattern)
-  runAnalysis(taskId, datasetId, prompt, language ?? "ru").catch((err) => {
-    req.log?.error({ err, taskId }, "Agent analyze failed");
-  });
+  if (user) {
+    await db.insert(agentTasksTable).values({
+      id: taskId, userId: user.id, type: "analyze",
+      status: result.status, prompt, datasetId: datasetId ?? null,
+      result: JSON.stringify({ text: result.text, insights: result.insights }),
+      error: result.error ?? null,
+      completedAt: new Date(),
+    });
+  }
 
-  res.json({ taskId, status: "running", result: null, insights: [] });
+  if (result.status === "failed") {
+    req.log?.error({ taskId, error: result.error }, "OpenRouter agent request failed");
+  }
+  res.status(result.status === "failed" ? 502 : 200).json({
+    taskId,
+    status: result.status,
+    result: result.text,
+    insights: result.insights,
+    ...(result.error ? { error: result.error } : {}),
+  });
 });
 
 // POST /api/agents/price-search
@@ -82,11 +93,30 @@ router.post("/price-search", requireAuth, async (req, res) => {
   res.json({ taskId, status: "completed", items });
 });
 
-async function runAnalysis(taskId: string, datasetId: string, prompt: string, language: string) {
+// Free model availability is provider-dependent and can be rate-limited.
+// Keep several current :free models so one busy upstream does not break the agent.
+const FREE_OPENROUTER_MODELS = [
+  "google/gemma-4-31b-it:free",
+  "google/gemma-4-26b-a4b-it:free",
+  "minimax/minimax-m3:free",
+  "z-ai/glm-5.2:free",
+  "nvidia/nemotron-3.5-lightning:free",
+];
+
+async function runAnalysis(datasetId: string, prompt: string, language: string): Promise<{
+  status: "completed" | "failed";
+  text: string | null;
+  insights: string[];
+  error?: string;
+}> {
   try {
     // Get KPI context for the AI
-    const kpiRows = await aggregateKpi(datasetId, [], undefined).catch(() => []);
-    const metrics = kpiRows[0]?.metrics ?? {};
+    const isDemo = datasetId.startsWith("demo");
+    const kpiRows = isDemo ? [] : await aggregateKpi(datasetId, [], undefined).catch(() => []);
+    const metrics = kpiRows[0]?.metrics ?? (isDemo ? {
+      revenue: 6240000, grossProfit: 2496000, grossMargin: 0.4,
+      ebitda: 1248000, ebitdaMargin: 0.2, roi: 0.284, eva: 420000, netProfit: 870000,
+    } : {});
 
     const kpiContext = `
 Данные KPI:
@@ -98,49 +128,67 @@ async function runAnalysis(taskId: string, datasetId: string, prompt: string, la
 - Чистая прибыль: ${formatNum(metrics.netProfit)} EUR
     `.trim();
 
-    // Try Anthropic/OpenAI if available
-    let result = "";
-    let insights: string[] = [];
-
-    try {
-      const Anthropic = (await import("@anthropic-ai/sdk")).default;
-      const client = new Anthropic({
-        baseURL: process.env["ANTHROPIC_API_BASE_URL"],
-        apiKey: process.env["ANTHROPIC_API_KEY"] ?? "placeholder",
-        defaultHeaders: { "anthropic-beta": "interstitial-ignores-1" },
-      });
-
-      const systemPrompt = `Ты — аналитик данных продаж. Отвечай на ${language === "ru" ? "русском" : "английском"} языке. Предоставляй конкретные, действенные insights на основе данных.`;
-      const userMessage = `${kpiContext}\n\nВопрос пользователя: ${prompt}`;
-
-      const response = await client.messages.create({
-        model: "claude-3-5-haiku-20241022",
-        max_tokens: 1024,
-        messages: [{ role: "user", content: userMessage }],
-        system: systemPrompt,
-      });
-
-      result = response.content[0]?.type === "text" ? response.content[0].text : "";
-      // Extract bullet points as insights
-      insights = result.split("\n").filter((l) => l.trim().startsWith("•") || l.trim().startsWith("-") || l.trim().startsWith("*"))
-        .map((l) => l.replace(/^[•\-\*]\s*/, "").trim()).filter((l) => l.length > 10).slice(0, 5);
-    } catch {
-      // Fallback: generate basic analysis without AI
-      result = generateFallbackAnalysis(metrics, prompt, language);
-      insights = generateFallbackInsights(metrics);
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      return { status: "failed", text: null, insights: [], error: "OPENROUTER_API_KEY is not configured" };
     }
 
-    await db.update(agentTasksTable).set({
-      status: "completed",
-      result: JSON.stringify({ text: result, insights }),
-      completedAt: new Date(),
-    }).where(eq(agentTasksTable.id, taskId));
+    const messages = [
+      {
+        role: "system",
+        content: `Ты — AI-аналитик продаж. Отвечай на ${language === "ru" ? "русском" : "английском"} языке. Используй только данные из контекста, не выдумывай отсутствующие значения. Дай краткий вывод, затем 3-5 конкретных действий.`,
+      },
+      { role: "user", content: `${kpiContext}\n\nВопрос пользователя: ${prompt}` },
+    ];
+    let lastError = "No free OpenRouter model responded";
+
+    for (const model of FREE_OPENROUTER_MODELS) {
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://sales-bi.replit.app",
+            "X-Title": "Sales BI Platform",
+          },
+          body: JSON.stringify({ model, max_tokens: 8192, temperature: 0.2, messages }),
+          signal: AbortSignal.timeout(60_000),
+        });
+
+        if (response.ok) {
+          const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
+          const text = payload.choices?.[0]?.message?.content?.trim();
+          if (text) {
+            const insights = text.split("\n")
+              .filter((line) => /^\s*(•|-|\*|\d+[.)])\s+/.test(line))
+              .map((line) => line.replace(/^\s*(•|-|\*|\d+[.)])\s+/, "").trim())
+              .filter((line) => line.length > 10)
+              .slice(0, 5);
+            return { status: "completed", text, insights };
+          }
+          lastError = `${model} returned an empty response`;
+          break;
+        }
+
+        const errorText = await response.text();
+        let providerMessage = errorText.slice(0, 240);
+        try {
+          const errorPayload = JSON.parse(errorText) as { error?: { message?: string; metadata?: { raw?: string } } };
+          providerMessage = errorPayload.error?.metadata?.raw ?? errorPayload.error?.message ?? providerMessage;
+        } catch {
+          // Keep the bounded response text for diagnostics.
+        }
+        lastError = `OpenRouter ${response.status} (${model}): ${providerMessage.slice(0, 240)}`;
+        const retryable = response.status === 408 || response.status === 429 || response.status >= 500;
+        if (!retryable || attempt === 1) break;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+      }
+    }
+
+    throw new Error(lastError);
   } catch (err) {
-    await db.update(agentTasksTable).set({
-      status: "failed",
-      error: String(err),
-      completedAt: new Date(),
-    }).where(eq(agentTasksTable.id, taskId));
+    return { status: "failed", text: null, insights: [], error: String(err) };
   }
 }
 
@@ -151,9 +199,9 @@ function generateFallbackAnalysis(metrics: any, prompt: string, language: string
   const roi = Number(metrics.roi ?? 0) * 100;
 
   if (language === "ru") {
-    return `Анализ данных продаж:\n\n• Выручка составляет ${formatNum(rev)} EUR\n• Валовая маржа: ${gm.toFixed(1)}% ${gm > 30 ? "(хороший уровень)" : gm > 20 ? "(приемлемый)" : "(требует улучшения)"}\n• EBITDA: ${formatNum(ebitda)} EUR\n• ROI: ${roi.toFixed(1)}%\n\nДля получения ИИ-анализа настройте ANTHROPIC_API_KEY.`;
+      return `Анализ данных продаж:\n\n• Выручка составляет ${formatNum(rev)} EUR\n• Валовая маржа: ${gm.toFixed(1)}% ${gm > 30 ? "(хороший уровень)" : gm > 20 ? "(приемлемый)" : "(требует улучшения)"}\n• EBITDA: ${formatNum(ebitda)} EUR\n• ROI: ${roi.toFixed(1)}%`;
   }
-  return `Sales data analysis:\n\n• Revenue: ${formatNum(rev)} EUR\n• Gross margin: ${gm.toFixed(1)}%\n• EBITDA: ${formatNum(ebitda)} EUR\n• ROI: ${roi.toFixed(1)}%\n\nSet ANTHROPIC_API_KEY for AI-powered analysis.`;
+  return `Sales data analysis:\n\n• Revenue: ${formatNum(rev)} EUR\n• Gross margin: ${gm.toFixed(1)}%\n• EBITDA: ${formatNum(ebitda)} EUR\n• ROI: ${roi.toFixed(1)}%`;
 }
 
 function generateFallbackInsights(metrics: any): string[] {

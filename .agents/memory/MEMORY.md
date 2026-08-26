@@ -1,2 +1,3 @@
 - [Codegen naming](codegen-naming.md) — Orval hook/schema names differ from OpenAPI component names; always grep api.ts to confirm.
 - [Express5 params cast](express5-params.md) — req.params values need `as string` cast before passing to Drizzle eq().
+- [OpenRouter free models](openrouter-free-fallbacks.md) — :free models can be upstream-rate-limited; keep a current fallback list and retry transient 429/5xx responses.

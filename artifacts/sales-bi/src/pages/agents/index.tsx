@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Bot, Sparkles, TrendingUp, Search, Send, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAgentAnalyze } from "@workspace/api-client-react";
 
 interface Message { role: "user" | "assistant"; content: string; }
 
@@ -15,41 +16,32 @@ export default function AgentsPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your AI Sales Analyst. I can analyze your KPIs, identify trends, run scenario analysis, and provide strategic recommendations. What would you like to explore?\n\nExample queries:\n• \"What are the main revenue growth drivers?\"\n• \"Which product categories are underperforming?\"\n• \"Generate a 12-month sales forecast\"\n• \"Compare Q3 vs Q4 performance\"",
+      content: "Здравствуйте! Я AI-аналитик продаж на бесплатной модели OpenRouter. Я могу разобрать KPI, найти тренды, оценить сценарии и дать практические рекомендации.\n\nПримеры:\n• «Какие факторы сильнее всего влияют на рост выручки?»\n• «Какие категории работают хуже всего?»\n• «Как улучшить EBITDA и маржу?»\n• «Сравни результаты 2023 и 2024 года»",
     }
   ]);
-  const [loading, setLoading] = useState(false);
+  const analyze = useAgentAnalyze();
+  const loading = analyze.isPending;
 
   async function sendMessage() {
     if (!prompt.trim() || loading) return;
     const userMsg = prompt.trim();
     setPrompt("");
     setMessages(prev => [...prev, { role: "user", content: userMsg }]);
-    setLoading(true);
 
     try {
-      const token = localStorage.getItem("sbi_token");
-      const res = await fetch("/api/agents/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ datasetId: "demo", prompt: userMsg, language: "en" }),
+      const data = await analyze.mutateAsync({
+        data: { datasetId: "demo", prompt: userMsg, language: "ru" },
       });
-      const data = await res.json();
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: data.result ?? data.insights ?? JSON.stringify(data, null, 2),
+        content: data.result ?? data.insights?.join("\n") ?? "AI-агент не вернул текстовый результат.",
       }]);
-    } catch {
-      toast({ title: "Agent error", description: "Unable to reach AI agent", variant: "destructive" });
+    } catch (error) {
+      toast({ title: "Ошибка AI-агента", description: error instanceof Error ? error.message : "Не удалось получить ответ OpenRouter", variant: "destructive" });
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: "I'm currently running in demo mode. In production, I'll analyze your actual sales data using Claude AI.\n\n**Demo insight:** Based on typical patterns, Q4 shows 25-35% higher revenue than Q1. Gross profit margins tend to compress in high-volume periods due to promotional pricing. I recommend focusing on high-margin SKUs during peak seasons.",
+        content: "Не удалось получить ответ от OpenRouter. Проверьте доступность бесплатной модели и повторите запрос.",
       }]);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -70,7 +62,20 @@ export default function AgentsPage() {
 
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           {agentCards.map((a) => (
-            <Card key={a.title} className="hover:shadow-md transition-shadow cursor-pointer">
+            <button
+              key={a.title}
+              type="button"
+              className="text-left"
+              data-testid={`button-agent-${a.title.toLowerCase().replace(/\s+/g, "-")}`}
+              onClick={() => setPrompt(a.title === "Price Scout"
+                ? "Проанализируй ценовое позиционирование наших SKU и предложи, где можно увеличить маржу."
+                : a.title === "Scenario Engine"
+                  ? "Оцени ключевые риски и возможности для сценария роста продаж."
+                  : a.title === "Strategy AI"
+                    ? "Сформулируй стратегические рекомендации по портфелю продуктов и рынкам."
+                    : "Найди главные драйверы выручки и KPI, которые требуют внимания.")}
+            >
+            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
               <CardContent className="p-4">
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${a.color}`}>
                   <a.icon className="w-5 h-5" />
@@ -79,6 +84,7 @@ export default function AgentsPage() {
                 <p className="text-xs text-muted-foreground mt-1">{a.desc}</p>
               </CardContent>
             </Card>
+            </button>
           ))}
         </div>
 
@@ -90,9 +96,9 @@ export default function AgentsPage() {
               </div>
               <div>
                 <CardTitle className="text-sm">Sales Intelligence Assistant</CardTitle>
-                <CardDescription className="text-xs">Powered by Claude AI</CardDescription>
-              </div>
-              <Badge variant="secondary" className="ml-auto text-xs">Demo</Badge>
+               <CardDescription className="text-xs">OpenRouter · бесплатная модель</CardDescription>
+               </div>
+               <Badge variant="secondary" className="ml-auto text-xs">{loading ? "Работает" : "Готов"}</Badge>
             </div>
           </CardHeader>
           <CardContent className="flex-1 overflow-y-auto p-4 space-y-4" style={{ minHeight: 0 }}>
@@ -118,7 +124,8 @@ export default function AgentsPage() {
           </CardContent>
           <div className="border-t p-4">
             <div className="flex gap-2">
-              <Textarea
+               <Textarea
+                 data-testid="input-agent-prompt"
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder="Ask about KPIs, trends, forecasts, or strategy…"
@@ -128,7 +135,7 @@ export default function AgentsPage() {
                   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
                 }}
               />
-              <Button onClick={sendMessage} disabled={!prompt.trim() || loading} size="icon" className="self-end h-10 w-10">
+               <Button data-testid="button-send-agent" onClick={sendMessage} disabled={!prompt.trim() || loading} size="icon" className="self-end h-10 w-10">
                 <Send className="w-4 h-4" />
               </Button>
             </div>
