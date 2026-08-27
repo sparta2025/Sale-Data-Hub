@@ -33,9 +33,10 @@ interface SidebarProps {
   open?: boolean;
   onClose?: () => void;
   mobile?: boolean;
+  collapsed?: boolean;
 }
 
-export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) {
+export function Sidebar({ open = true, onClose, mobile = false, collapsed = false }: SidebarProps) {
   const [location] = useLocation();
   const { t } = useI18n();
   const { user } = useAuth();
@@ -48,15 +49,17 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
     const isActive = location === href;
     return (
       <Link href={href} onClick={mobile ? onClose : undefined}
+        title={collapsed ? t(labelKey) : undefined}
         className={cn(
-          "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
-          indent && "ml-3",
+          "flex items-center gap-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+          collapsed ? "justify-center px-2" : "px-3",
+          indent && !collapsed && "ml-3",
           isActive
             ? "bg-primary text-primary-foreground shadow-sm"
             : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         )}>
         <Icon className={cn("flex-shrink-0", indent ? "w-3.5 h-3.5" : "w-4 h-4")} />
-        <span className="truncate">{t(labelKey)}</span>
+          {!collapsed && <span className="truncate">{t(labelKey)}</span>}
       </Link>
     );
   }
@@ -64,12 +67,18 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
   const sidebarContent = (
     <div className="flex flex-col h-full">
       {/* Logo */}
-      <div className="h-14 border-b border-sidebar-border flex items-center justify-between px-4 flex-shrink-0">
+      <div className={cn(
+        "h-14 border-b border-sidebar-border flex items-center flex-shrink-0",
+        collapsed ? "justify-center px-2" : "justify-between px-4",
+      )}>
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center flex-shrink-0">
+          <div
+            className="w-7 h-7 bg-primary rounded-lg flex items-center justify-center flex-shrink-0"
+            title={collapsed ? "Sales BI" : undefined}
+          >
             <BarChart3 className="w-4 h-4 text-primary-foreground" />
           </div>
-          <span className="font-bold text-sm text-sidebar-foreground">Sales BI</span>
+          {!collapsed && <span className="font-bold text-sm text-sidebar-foreground">Sales BI</span>}
         </div>
         {mobile && (
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
@@ -84,18 +93,20 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
         <div className="mb-1">
           <button
             onClick={() => setDashOpen(v => !v)}
+            title={collapsed ? (t("nav.analytics") || "Аналитика") : undefined}
             className={cn(
-              "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+              "w-full flex items-center gap-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+              collapsed ? "justify-center px-2" : "px-3",
               isDashboardRoute
                 ? "text-primary"
                 : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )}
           >
             <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
-            <span className="flex-1 text-left">{t("nav.analytics") || "Аналитика"}</span>
-            {dashOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            {!collapsed && <span className="flex-1 text-left">{t("nav.analytics") || "Аналитика"}</span>}
+            {!collapsed && (dashOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />)}
           </button>
-          {dashOpen && (
+          {(dashOpen || collapsed) && (
             <div className="mt-0.5 space-y-0.5">
               {dashboardSubItems.map((item) => (
                 <NavItem key={item.href} {...item} indent />
@@ -113,8 +124,11 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
         {/* Admin section */}
         {(isAdmin || true) && ( // Show admin link always for now
           <>
-            <div className="pt-3 pb-1">
-              <p className="px-3 text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-widest">
+            <div className={cn("pt-3 pb-1", collapsed && "px-2")}>
+              <p className={cn(
+                "px-3 text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-widest",
+                collapsed && "h-px px-0 bg-sidebar-border text-[0px]",
+              )}>
                 Admin
               </p>
             </div>
@@ -128,8 +142,11 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
       </div>
 
       {/* Footer version */}
-      <div className="px-4 py-3 border-t border-sidebar-border flex-shrink-0">
-        <p className="text-xs text-sidebar-foreground/30">v1.0.0 · Sales BI Platform</p>
+      <div className={cn(
+        "py-3 border-t border-sidebar-border flex-shrink-0",
+        collapsed ? "px-2" : "px-4",
+      )}>
+        {!collapsed && <p className="text-xs text-sidebar-foreground/30">v1.0.0 · Sales BI Platform</p>}
       </div>
     </div>
   );
@@ -153,7 +170,10 @@ export function Sidebar({ open = true, onClose, mobile = false }: SidebarProps) 
   }
 
   return (
-    <aside className="w-60 border-r border-sidebar-border bg-sidebar flex-shrink-0 hidden md:flex flex-col h-full">
+    <aside className={cn(
+      "border-r border-sidebar-border bg-sidebar flex-shrink-0 hidden md:flex flex-col h-full transition-[width] duration-200",
+      collapsed ? "w-16" : "w-60",
+    )}>
       {sidebarContent}
     </aside>
   );

@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Bell, LogOut, Sun, Moon, Waves, Anchor, CircleDot, Menu } from "lucide-react";
+import { Bell, LogOut, Sun, Moon, Waves, Anchor, CircleDot, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Theme = "light" | "dark" | "neutral" | "ocean" | "deep-ocean";
@@ -41,7 +41,15 @@ const LANGS = [
   { code: "ko", label: "한국어" },
 ] as const;
 
-export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
+export function Topbar({
+  onMenuClick,
+  sidebarCollapsed = false,
+  onToggleSidebar,
+}: {
+  onMenuClick?: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebar?: () => void;
+}) {
   const { user, logout, isDemo } = useAuth();
   const { t, language, setLanguage } = useI18n();
   const [, setLocation] = useLocation();
@@ -61,6 +69,18 @@ export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
           <Menu className="w-5 h-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hidden md:inline-flex h-8 w-8"
+          onClick={onToggleSidebar}
+          aria-label={sidebarCollapsed ? "Показать панель навигации" : "Скрыть панель навигации"}
+          title={sidebarCollapsed ? "Показать панель навигации" : "Скрыть панель навигации"}
+        >
+          {sidebarCollapsed
+            ? <PanelLeftOpen className="w-4 h-4" />
+            : <PanelLeftClose className="w-4 h-4" />}
         </Button>
         {isDemo && (
           <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2.5 py-0.5 rounded-md text-xs font-semibold border border-amber-500/20 select-none">
