@@ -131,6 +131,17 @@ export interface DatasetSummary {
   categories?: string[];
 }
 
+export type DatasetPreviewRowsItem = { [key: string]: unknown };
+
+export interface DatasetPreview {
+  datasetId: string;
+  columns: string[];
+  rows: DatasetPreviewRowsItem[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export interface KpiFilters {
   /** @nullable */
   country?: string | null;
@@ -645,6 +656,25 @@ export type ListUsersParams = {
 page?: number;
 limit?: number;
 search?: string;
+};
+
+export type GetDatasetPreviewParams = {
+datasetId: string;
+/**
+ * Maximum number of rows to return
+ * @minimum 1
+ * @maximum 1000
+ */
+limit?: number;
+/**
+ * Number of matching rows to skip
+ * @minimum 0
+ */
+offset?: number;
+/**
+ * URL-encoded JSON object mapping dataset column names to search text
+ */
+filters?: string;
 };
 
 export type GetKpiTargetsParams = {

@@ -374,6 +374,34 @@ export const GetDatasetSummaryResponse = zod.object({
 
 
 /**
+ * @summary Preview dataset rows with column filters
+ */
+export const getDatasetPreviewQueryLimitDefault = 100;
+export const getDatasetPreviewQueryLimitMax = 1000;
+
+export const getDatasetPreviewQueryOffsetDefault = 0;
+export const getDatasetPreviewQueryOffsetMin = 0;
+
+
+
+export const GetDatasetPreviewQueryParams = zod.object({
+  "datasetId": zod.coerce.string(),
+  "limit": zod.coerce.number().min(1).max(getDatasetPreviewQueryLimitMax).default(getDatasetPreviewQueryLimitDefault).describe('Maximum number of rows to return'),
+  "offset": zod.coerce.number().min(getDatasetPreviewQueryOffsetMin).default(getDatasetPreviewQueryOffsetDefault).describe('Number of matching rows to skip'),
+  "filters": zod.coerce.string().optional().describe('URL-encoded JSON object mapping dataset column names to search text')
+})
+
+export const GetDatasetPreviewResponse = zod.object({
+  "datasetId": zod.string(),
+  "columns": zod.array(zod.string()),
+  "rows": zod.array(zod.record(zod.string(), zod.unknown())),
+  "total": zod.number(),
+  "limit": zod.number(),
+  "offset": zod.number()
+})
+
+
+/**
  * @summary Upload Excel/CSV file and parse into DB
  */
 export const UploadDatasetBody = zod.object({

@@ -37,6 +37,7 @@ import type {
   Dataset,
   DatasetFileUpload,
   DatasetInput,
+  DatasetPreview,
   DatasetSummary,
   ErrorResponse,
   EvaInput,
@@ -46,6 +47,7 @@ import type {
   ForecastInput,
   ForecastResponse,
   ForgotPasswordInput,
+  GetDatasetPreviewParams,
   GetKpiTargetsParams,
   HealthStatus,
   KpiCompareRequest,
@@ -1412,6 +1414,90 @@ export function useGetDatasetSummary<TData = Awaited<ReturnType<typeof getDatase
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetDatasetSummaryQueryOptions(datasetId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetDatasetPreviewUrl = (params: GetDatasetPreviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/datasets/preview?${stringifiedParams}` : `/api/datasets/preview`
+}
+
+/**
+ * @summary Preview dataset rows with column filters
+ */
+export const getDatasetPreview = async (params: GetDatasetPreviewParams, options?: RequestInit): Promise<DatasetPreview> => {
+
+  return customFetch<DatasetPreview>(getGetDatasetPreviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDatasetPreviewQueryKey = (params?: GetDatasetPreviewParams,) => {
+    return [
+    `/api/datasets/preview`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetDatasetPreviewQueryOptions = <TData = Awaited<ReturnType<typeof getDatasetPreview>>, TError = ErrorType<unknown>>(params: GetDatasetPreviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDatasetPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDatasetPreviewQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDatasetPreview>>> = ({ signal }) => getDatasetPreview(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDatasetPreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDatasetPreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getDatasetPreview>>>
+export type GetDatasetPreviewQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Preview dataset rows with column filters
+ */
+
+export function useGetDatasetPreview<TData = Awaited<ReturnType<typeof getDatasetPreview>>, TError = ErrorType<unknown>>(
+ params: GetDatasetPreviewParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDatasetPreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDatasetPreviewQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
