@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import {
   LayoutDashboard, Database, Bot, Settings,
   LineChart, BarChart2, PieChart, Map as MapIcon,
-  TrendingUp, ChevronDown, ChevronRight, BarChart3, X
+  TrendingUp, ChevronDown, ChevronRight, BarChart3, X, BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,7 @@ export function Sidebar({ open = true, onClose, mobile = false, collapsed = fals
         "py-3 border-t border-sidebar-border flex-shrink-0",
         collapsed ? "px-2" : "px-4",
       )}>
+        <NavItem href="/documentation" icon={BookOpen} labelKey="nav.documentation" />
         {!collapsed && <p className="text-xs text-sidebar-foreground/30">v1.0.0 · Sales BI Platform</p>}
       </div>
     </div>

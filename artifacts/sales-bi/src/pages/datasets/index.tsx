@@ -287,7 +287,10 @@ export default function DatasetsPage() {
       </div>
 
       <Dialog open={previewOpen} onOpenChange={(open) => (open ? setPreviewOpen(true) : closePreview())}>
-        <DialogContent className="max-w-[96vw] gap-0 overflow-hidden p-0 sm:max-w-[96vw]">
+        <DialogContent
+          aria-label="Dataset preview"
+          className="flex h-[82vh] min-h-[420px] min-w-0 w-[96vw] max-h-[92vh] max-w-none resize flex-col gap-0 overflow-hidden p-0 sm:max-w-[96vw]"
+        >
           <DialogHeader className="border-b px-6 py-4 pr-12">
             <DialogTitle className="flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -341,7 +344,7 @@ export default function DatasetsPage() {
             )}
           </div>
 
-          <div className="mx-6 my-3 max-h-[58vh] overflow-auto rounded-md border">
+          <div className="mx-6 my-3 min-h-0 flex-1 overflow-x-auto overflow-y-scroll rounded-md border">
             {previewQuery.isError && !previewDataset?.isDemo ? (
               <div className="flex min-h-40 items-center justify-center p-6 text-sm text-destructive">
                 Не удалось загрузить строки dataset. Попробуйте ещё раз.

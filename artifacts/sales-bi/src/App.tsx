@@ -25,6 +25,7 @@ const ComparePage = lazy(() => import("@/pages/dashboard/compare"));
 const PortfolioPage = lazy(() => import("@/pages/dashboard/portfolio"));
 const SalesMapPage = lazy(() => import("@/pages/dashboard/map"));
 const DatasetsPage = lazy(() => import("@/pages/datasets/index"));
+const DocumentationPage = lazy(() => import("@/pages/documentation/index"));
 const AgentsPage = lazy(() => import("@/pages/agents/index"));
 const AdminPage = lazy(() => import("@/pages/admin/index"));
 
@@ -64,6 +65,7 @@ function Router() {
         <ProtectedRoute path="/dashboard/map" component={SalesMapPage} />
         <ProtectedRoute path="/dashboard" component={Dashboard} />
         <ProtectedRoute path="/datasets" component={DatasetsPage} />
+        <ProtectedRoute path="/documentation" component={DocumentationPage} />
         <ProtectedRoute path="/agents" component={AgentsPage} />
         <ProtectedRoute path="/admin" component={AdminPage} />
         <Route component={NotFound} />
