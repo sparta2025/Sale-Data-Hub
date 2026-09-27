@@ -24,6 +24,27 @@ const features = [
   { icon: Bot, title: "AI агенты", desc: "Анализ данных с помощью Claude AI" },
 ];
 
+const testUsers = [
+  {
+    name: "Администратор",
+    email: "admin@salesbi.com",
+    password: "Admin123!",
+    access: "Полный доступ и Админ-панель",
+  },
+  {
+    name: "Аналитик",
+    email: "analyst@salesbi.com",
+    password: "Analyst123!",
+    access: "Стандартный доступ к аналитике",
+  },
+  {
+    name: "Наблюдатель",
+    email: "viewer@salesbi.com",
+    password: "Viewer123!",
+    access: "Стандартный доступ к просмотру",
+  },
+];
+
 export default function Login() {
   const { login, setDemoMode } = useAuth();
   const { t } = useI18n();
@@ -176,7 +197,31 @@ export default function Login() {
 
           <div className="mt-6 p-3 rounded-lg bg-muted/50 border text-xs text-muted-foreground">
             <p className="font-medium mb-1">{t("login.hint") || "Тестовый доступ:"}</p>
-            <p>admin@salesbi.com · Admin123!</p>
+            <p className="mb-3">Это учебные аккаунты для проверки разных прав доступа.</p>
+            <div className="space-y-2">
+              {testUsers.map((testUser) => (
+                <div key={testUser.email} className="rounded-md border bg-background/70 p-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-foreground">{testUser.name}</p>
+                      <p className="text-[11px]">{testUser.access}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 px-2 text-[11px]"
+                      onClick={() => form.reset({ email: testUser.email, password: testUser.password })}
+                    >
+                      Использовать
+                    </Button>
+                  </div>
+                  <p className="mt-2 font-mono text-[11px] text-foreground">
+                    {testUser.email} · {testUser.password}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

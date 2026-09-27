@@ -122,7 +122,7 @@ export function Sidebar({ open = true, onClose, mobile = false, collapsed = fals
         </div>
 
         {/* Admin section */}
-        {(isAdmin || true) && ( // Show admin link always for now
+        {isAdmin && (
           <>
             <div className={cn("pt-3 pb-1", collapsed && "px-2")}>
               <p className={cn(

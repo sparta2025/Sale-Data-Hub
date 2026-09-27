@@ -21,13 +21,26 @@ const statsCards = [
 ];
 
 export default function AdminPage() {
-  const { isDemo } = useAuth();
-  const { data: usersData } = useListUsers({}, { query: { enabled: !isDemo, queryKey: ["listUsers"] } as any });
+  const { isDemo, user } = useAuth();
+  const canManageUsers = isDemo || user?.role === "admin";
+  const { data: usersData } = useListUsers({}, { query: { enabled: canManageUsers && !isDemo, queryKey: ["listUsers"] } as any });
   const displayUsers = isDemo ? demoUsers : (usersData?.users ?? []);
 
   return (
     <AppLayout>
       <div className="space-y-6">
+        {!canManageUsers ? (
+          <Card>
+            <CardContent className="flex min-h-52 flex-col items-center justify-center p-6 text-center">
+              <Shield className="mb-3 h-8 w-8 text-muted-foreground" />
+              <p className="font-medium">Недостаточно прав</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Админ-панель доступна только пользователям с ролью администратора.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Admin Panel</h1>
           <p className="text-sm text-muted-foreground">User management and system overview</p>
@@ -88,6 +101,8 @@ export default function AdminPage() {
               <p>Log in as admin to manage users, view audit logs, and configure the system.</p>
             </CardContent>
           </Card>
+        )}
+          </>
         )}
       </div>
     </AppLayout>
