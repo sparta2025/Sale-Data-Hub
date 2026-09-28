@@ -64,8 +64,21 @@ export default function Login() {
         login(response.token);
         setLocation("/dashboard");
       },
-      onError: () => {
-        toast({ title: t("login.error") || "Ошибка входа", description: t("login.errorDesc") || "Неверный email или пароль", variant: "destructive" });
+      onError: (error: any) => {
+        const status = error?.status ?? error?.response?.status;
+        if (status >= 500) {
+          toast({
+            title: "Сервер временно недоступен",
+            description: "База данных опубликованной версии ещё не готова. Повторите публикацию приложения.",
+            variant: "destructive",
+          });
+          return;
+        }
+        toast({
+          title: t("login.error") || "Ошибка входа",
+          description: t("login.errorDesc") || "Неверный email или пароль",
+          variant: "destructive",
+        });
       },
     });
   };
