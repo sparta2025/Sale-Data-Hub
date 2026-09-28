@@ -59,6 +59,39 @@ const demoPreviewRows: Record<string, Record<string, unknown>[]> = {
   ],
 };
 
+function buildDemoRows(datasetId: string, limit: number) {
+  const templates = demoPreviewRows[datasetId] ?? [];
+  if (templates.length === 0) return [];
+
+  return Array.from({ length: limit }, (_, index) => {
+    const template = templates[index % templates.length];
+    const row = { ...template };
+
+    if (datasetId === "demo-1") {
+      const countries = ["Germany", "France", "Italy", "Spain", "Poland"];
+      const categories = ["Electronics", "Sportswear", "Home", "Beauty"];
+      row.date = `2024-${String((index % 12) + 1).padStart(2, "0")}-${String((index % 28) + 1).padStart(2, "0")}`;
+      row.product = `${template.product} ${Math.floor(index / templates.length) + 1}`;
+      row.category = categories[index % categories.length];
+      row.country = countries[index % countries.length];
+      row.revenue = `€${(6740 + ((index * 1370) % 18500)).toLocaleString("en-US")}`;
+      row.units = 42 + ((index * 17) % 180);
+    } else if (datasetId === "demo-2") {
+      const reps = ["Anna Schmidt", "Jean Martin", "Marco Rossi", "Olga Petrova"];
+      const regions = ["DACH", "France", "Italy", "CEE"];
+      const months = ["October", "November", "December"];
+      row.month = months[index % months.length];
+      row.rep = reps[index % reps.length];
+      row.region = regions[index % regions.length];
+      row.target = `€${(36000 + ((index * 2100) % 16000)).toLocaleString("en-US")}`;
+      row.actual = `€${(34200 + ((index * 2750) % 21000)).toLocaleString("en-US")}`;
+      row.gp = `${(27 + ((index * 1.7) % 9)).toFixed(1)}%`;
+    }
+
+    return row;
+  });
+}
+
 export default function DatasetsPage() {
   const { isDemo } = useAuth();
   const { toast } = useToast();
@@ -111,19 +144,19 @@ export default function DatasetsPage() {
 
   const demoRows = useMemo(() => {
     if (!previewDataset?.isDemo) return [];
-    const rows = demoPreviewRows[previewDataset.id] ?? [];
+    const rows = buildDemoRows(previewDataset.id, previewLimit);
     return rows.filter((row) =>
       Object.entries(appliedFilters).every(([column, value]) =>
         String(row[column] ?? "").toLowerCase().includes(value.toLowerCase()),
       ),
     );
-  }, [appliedFilters, previewDataset]);
+  }, [appliedFilters, previewDataset, previewLimit]);
   const previewData = previewDataset?.isDemo
     ? {
         datasetId: previewDataset.id,
         columns: previewDataset.columns,
         rows: demoRows,
-        total: previewDataset.rowCount,
+        total: demoRows.length,
         limit: previewLimit,
         offset: 0,
       }
